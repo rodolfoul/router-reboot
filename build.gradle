@@ -1,0 +1,20 @@
+plugins {
+	id "com.github.johnrengelman.shadow" version "1.2.4"
+}
+apply plugin: 'application'
+apply plugin: 'java'
+
+mainClassName = 'org.rl.PostMethod'
+
+compileJava.options.encoding = 'UTF-8'
+
+targetCompatibility = '1.8'
+sourceCompatibility = '1.8'
+
+repositories {
+	jcenter()
+}
+
+dependencies {
+	compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.2'
+}
