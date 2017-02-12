@@ -6,6 +6,7 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ConnectTimeoutException;
+import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
@@ -25,10 +26,10 @@ public class PostMethod {
 	static {
 		int timeOutMs = 3 * 1000; // Timeout in millis.
 		requestConfig = RequestConfig.custom()
-		                             .setConnectionRequestTimeout(timeOutMs)
-		                             .setConnectTimeout(timeOutMs)
-		                             .setSocketTimeout(timeOutMs)
-		                             .build();
+				.setConnectionRequestTimeout(timeOutMs)
+				.setConnectTimeout(timeOutMs)
+				.setSocketTimeout(timeOutMs)
+				.build();
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -39,23 +40,30 @@ public class PostMethod {
 
 		CloseableHttpClient client = HttpClients.createDefault();
 
-		boolean loggedIn = false;
-		while (true) {
-			try {
-				if (!loggedIn) {
-					loggedIn = tryLogin(client);
-				}
-
-				if (loggedIn) {
-					if (tryReboot(client)) {
-						System.out.println("Successful reboot!");
-						System.exit(0);
+		try {
+			boolean loggedIn = false;
+			while (true) {
+				try {
+					if (!loggedIn) {
+						loggedIn = tryLogin(client);
 					}
-				}
 
-			} catch (SocketTimeoutException | ConnectTimeoutException e) {
-				System.out.println("Timed out during reboot process");
+					if (loggedIn) {
+						if (tryReboot(client)) {
+							System.out.println("Successful reboot!");
+							System.exit(0);
+						}
+					}
+
+				} catch (SocketTimeoutException | ConnectTimeoutException e) {
+					System.out.println("Timed out during reboot process");
+				}
 			}
+
+		} catch (HttpHostConnectException e) {
+			System.out.println("Could not connect to client, exiting.");
+			System.out.println(e.getCause());
+			System.exit(0);
 		}
 	}
 
@@ -64,7 +72,7 @@ public class PostMethod {
 		HttpPost httpPost = new HttpPost("http://192.168.23.1/goform/login");
 		httpPost.setConfig(requestConfig);
 		List<BasicNameValuePair> postData = Arrays.asList(new BasicNameValuePair("loginUsername", "admin"),
-		                                                  new BasicNameValuePair("loginPassword", "password"));
+				new BasicNameValuePair("loginPassword", "password"));
 		httpPost.setEntity(new UrlEncodedFormEntity(postData));
 		CloseableHttpResponse response = client.execute(httpPost);
 		if ("http://192.168.23.1/RgSwInfo.asp".equals(response.getHeaders("Location")[0].getValue())) {
