@@ -24,7 +24,7 @@ public class HostAliveChecker implements Runnable {
 		try {
 			while (true) {
 				hostAlive.set(host.isReachable(500));
-				if (!hostAlive.get()) {
+				if (!isHostAlive() && exitOnHostDown) {
 					System.out.println("Host went down, exiting...");
 					System.exit(0);
 				}
