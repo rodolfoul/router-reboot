@@ -3,6 +3,17 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Title</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/bootstrap/3.3.7/css/bootstrap.min.css"
+	      integrity="sha256-916EbMg70RQy9LHiGkXzG8hSg9EdNy97GazNG/aiY1w=" crossorigin="anonymous">
+	<style>
+		.loading {
+			cursor: progress;
+		}
+
+		html {
+			height: 100%;
+		}
+	</style>
 </head>
 <body>
 <button onclick="sendRestartMessage()">Restart router</button>
@@ -17,15 +28,24 @@
 	function sendRestartMessage() {
 
 		let pathname = window.location.pathname;
+		let htmlTag = $('html');
 		let $log = $('#log');
 		$log.text('');
 
 		let url = 'ws://' + window.location.host + pathname.substring(0, pathname.lastIndexOf("/")) + "/doReboot";
 		let mySocket = new WebSocket(url);
 
+		mySocket.onopen = function () {
+			htmlTag.addClass('loading');
+		};
+
 		mySocket.onmessage = function (evt) {
 			$log.text($log.text() + evt.data);
 		};
+
+		mySocket.onclose = function () {
+			htmlTag.removeClass('loading');
+		}
 	}
 </script>
 </body>

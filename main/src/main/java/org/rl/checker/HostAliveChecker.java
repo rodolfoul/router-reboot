@@ -1,7 +1,7 @@
 package org.rl.checker;
 
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -9,16 +9,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 class HostAliveChecker implements Runnable {
 	private final InetAddress host;
 	private final AtomicBoolean hostAlive = new AtomicBoolean(false);
-	private final boolean exitOnHostDown;
-	private PrintStream logStream;
+	private PrintWriter logWriter;
 
-	public HostAliveChecker(String host) throws UnknownHostException {
-		this(host, false);
-	}
-
-	public HostAliveChecker(String host, boolean exitOnHostDown) throws UnknownHostException {
+	HostAliveChecker(String host) throws UnknownHostException {
 		this.host = InetAddress.getByName(host);
-		this.exitOnHostDown = exitOnHostDown;
 	}
 
 	@Override
@@ -26,8 +20,8 @@ class HostAliveChecker implements Runnable {
 		try {
 			while (true) {
 				hostAlive.set(host.isReachable(500));
-				if (!isHostAlive() && exitOnHostDown) {
-					logStream.println("Host went down, exiting...");
+				if (!isHostAlive()) {
+					logWriter.println("Host went down, exiting...");
 					return;
 				}
 				Thread.sleep(500);
@@ -36,7 +30,7 @@ class HostAliveChecker implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
-			logStream.println("Thread interrupted.");
+			logWriter.println("Thread interrupted.");
 		}
 	}
 
@@ -44,7 +38,7 @@ class HostAliveChecker implements Runnable {
 		return hostAlive.get();
 	}
 
-	public void setLogStream(PrintStream logStream) {
-		this.logStream = logStream;
+	void setLogWriter(PrintWriter logWriter) {
+		this.logWriter = logWriter;
 	}
 }

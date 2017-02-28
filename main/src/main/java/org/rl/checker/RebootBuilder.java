@@ -1,17 +1,17 @@
 package org.rl.checker;
 
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.UnknownHostException;
 
 public class RebootBuilder {
 
-	private PrintStream ps = System.out;
+	private PrintWriter logWriter = new PrintWriter(System.out);
 
 	public RebootBuilder() {
 	}
 
-	public RebootBuilder setPrintStream(PrintStream ps) {
-		this.ps = ps;
+	public RebootBuilder setLogWriter(PrintWriter pw) {
+		this.logWriter = pw;
 
 		return this;
 	}
@@ -19,11 +19,11 @@ public class RebootBuilder {
 	public PostMethod build() {
 		PostMethod postMethod = new PostMethod();
 
-		postMethod.setPrintStream(ps);
+		postMethod.setLogWriter(logWriter);
 
 		try {
-			HostAliveChecker aliveChecker = new HostAliveChecker("192.168.23.1", true);
-			aliveChecker.setLogStream(ps);
+			HostAliveChecker aliveChecker = new HostAliveChecker("192.168.23.1");
+			aliveChecker.setLogWriter(logWriter);
 			postMethod.setHostAliveChecker(aliveChecker);
 
 		} catch (UnknownHostException e) {

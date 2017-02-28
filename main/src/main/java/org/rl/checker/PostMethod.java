@@ -6,7 +6,6 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ConnectTimeoutException;
-import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
@@ -14,16 +13,16 @@ import org.apache.http.message.BasicNameValuePair;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 import java.util.List;
 
-public class PostMethod {
+public class PostMethod implements Runnable {
 
 	private RequestConfig requestConfig;
-	private PrintStream ps;
+	private PrintWriter logWriter;
 	private HostAliveChecker aliveChecker;
 
 	PostMethod() {
@@ -35,15 +34,15 @@ public class PostMethod {
 		                             .build();
 	}
 
-	public void setPrintStream(PrintStream ps) {
-		this.ps = ps;
+	void setLogWriter(PrintWriter pw) {
+		this.logWriter = pw;
 	}
 
-	public void setHostAliveChecker(HostAliveChecker aliveChecker) {
+	void setHostAliveChecker(HostAliveChecker aliveChecker) {
 		this.aliveChecker = aliveChecker;
 	}
 
-	public void execute() throws IOException {
+	public void run() {
 		Thread t = new Thread(aliveChecker);
 		t.setDaemon(true);
 		t.start();
@@ -52,7 +51,7 @@ public class PostMethod {
 
 		try {
 			boolean loggedIn = false;
-			while (true) {
+			while (aliveChecker.isHostAlive()) {
 				try {
 					if (!loggedIn) {
 						loggedIn = tryLogin(client);
@@ -60,25 +59,24 @@ public class PostMethod {
 
 					if (loggedIn) {
 						if (tryReboot(client)) {
-							ps.println("Successful reboot!");
+							logWriter.println("Successful reboot!");
 							return;
 						}
 					}
 
 				} catch (SocketTimeoutException | ConnectTimeoutException e) {
-					ps.println("Timed out during reboot process");
+					logWriter.println("Timed out during reboot process");
 				}
 			}
 
-		} catch (HttpHostConnectException e) {
-			ps.println("Could not connect to client, exiting.");
-			ps.println(e.getCause());
-			return;
+		} catch (IOException e) {
+			logWriter.println("Could not connect to client, exiting.");
+			logWriter.println(e.getCause());
 		}
 	}
 
 	private boolean tryLogin(CloseableHttpClient client) throws IOException {
-		ps.println("Trying to log in.");
+		logWriter.println("Trying to log in.");
 		HttpPost httpPost = new HttpPost("http://192.168.23.1/goform/login");
 		httpPost.setConfig(requestConfig);
 		List<BasicNameValuePair> postData = Arrays.asList(new BasicNameValuePair("loginUsername", "admin"),
@@ -86,14 +84,14 @@ public class PostMethod {
 		httpPost.setEntity(new UrlEncodedFormEntity(postData));
 		CloseableHttpResponse response = client.execute(httpPost);
 		if ("http://192.168.23.1/RgSwInfo.asp".equals(response.getHeaders("Location")[0].getValue())) {
-			ps.println("Successful log in!");
+			logWriter.println("Successful log in!");
 			return true;
 		}
 		return false;
 	}
 
 	private boolean tryReboot(CloseableHttpClient client) throws IOException {
-		ps.println("Trying to reboot client.");
+		logWriter.println("Trying to reboot client.");
 		HttpPost httpPost = new HttpPost("http://192.168.23.1/goform/RgSetup");
 		httpPost.setConfig(requestConfig);
 
@@ -116,7 +114,7 @@ public class PostMethod {
 				new InputStreamReader(entity.getContent()));
 		String s;
 		while ((s = is.readLine()) != null) {
-			ps.println(s);
+			logWriter.println(s);
 		}
 	}
 }
