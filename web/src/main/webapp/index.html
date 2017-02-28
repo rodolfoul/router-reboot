@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Title</title>
+</head>
+<body>
+<button onclick="sendRestartMessage()">Restart router</button>
+
+<p>Log:</p>
+<pre id="log"></pre>
+
+<script src="https://cdn.jsdelivr.net/jquery/3.1.1/jquery.min.js"
+        integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+<script>
+
+	function sendRestartMessage() {
+
+		let pathname = window.location.pathname;
+		let $log = $('#log');
+		$log.text('');
+
+		let url = 'ws://' + window.location.host + pathname.substring(0, pathname.lastIndexOf("/")) + "/doReboot";
+		let mySocket = new WebSocket(url);
+
+		mySocket.onmessage = function (evt) {
+			$log.text($log.text() + evt.data);
+		};
+	}
+</script>
+</body>
+</html>

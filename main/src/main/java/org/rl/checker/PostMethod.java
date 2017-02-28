@@ -1,4 +1,4 @@
-package org.rl;
+package org.rl.checker;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
@@ -14,6 +14,7 @@ import org.apache.http.message.BasicNameValuePair;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
@@ -21,19 +22,28 @@ import java.util.List;
 
 public class PostMethod {
 
-	private static RequestConfig requestConfig;
+	private RequestConfig requestConfig;
+	private PrintStream ps;
+	private HostAliveChecker aliveChecker;
 
-	static {
-		int timeOutMs = 3 * 1000; // Timeout in millis.
+	PostMethod() {
+		int timeOutMs = 5 * 1000; // Timeout in millis.
 		requestConfig = RequestConfig.custom()
-				.setConnectionRequestTimeout(timeOutMs)
-				.setConnectTimeout(timeOutMs)
-				.setSocketTimeout(timeOutMs)
-				.build();
+		                             .setConnectionRequestTimeout(timeOutMs)
+		                             .setConnectTimeout(timeOutMs)
+		                             .setSocketTimeout(timeOutMs)
+		                             .build();
 	}
 
-	public static void main(String[] args) throws IOException {
-		HostAliveChecker aliveChecker = new HostAliveChecker("192.168.23.1", true);
+	public void setPrintStream(PrintStream ps) {
+		this.ps = ps;
+	}
+
+	public void setHostAliveChecker(HostAliveChecker aliveChecker) {
+		this.aliveChecker = aliveChecker;
+	}
+
+	public void execute() throws IOException {
 		Thread t = new Thread(aliveChecker);
 		t.setDaemon(true);
 		t.start();
@@ -50,40 +60,40 @@ public class PostMethod {
 
 					if (loggedIn) {
 						if (tryReboot(client)) {
-							System.out.println("Successful reboot!");
-							System.exit(0);
+							ps.println("Successful reboot!");
+							return;
 						}
 					}
 
 				} catch (SocketTimeoutException | ConnectTimeoutException e) {
-					System.out.println("Timed out during reboot process");
+					ps.println("Timed out during reboot process");
 				}
 			}
 
 		} catch (HttpHostConnectException e) {
-			System.out.println("Could not connect to client, exiting.");
-			System.out.println(e.getCause());
-			System.exit(0);
+			ps.println("Could not connect to client, exiting.");
+			ps.println(e.getCause());
+			return;
 		}
 	}
 
-	private static boolean tryLogin(CloseableHttpClient client) throws IOException {
-		System.out.println("Trying to log in.");
+	private boolean tryLogin(CloseableHttpClient client) throws IOException {
+		ps.println("Trying to log in.");
 		HttpPost httpPost = new HttpPost("http://192.168.23.1/goform/login");
 		httpPost.setConfig(requestConfig);
 		List<BasicNameValuePair> postData = Arrays.asList(new BasicNameValuePair("loginUsername", "admin"),
-				new BasicNameValuePair("loginPassword", "password"));
+		                                                  new BasicNameValuePair("loginPassword", "password"));
 		httpPost.setEntity(new UrlEncodedFormEntity(postData));
 		CloseableHttpResponse response = client.execute(httpPost);
 		if ("http://192.168.23.1/RgSwInfo.asp".equals(response.getHeaders("Location")[0].getValue())) {
-			System.out.println("Successful log in!");
+			ps.println("Successful log in!");
 			return true;
 		}
 		return false;
 	}
 
-	private static boolean tryReboot(CloseableHttpClient client) throws IOException {
-		System.out.println("Trying to reboot client.");
+	private boolean tryReboot(CloseableHttpClient client) throws IOException {
+		ps.println("Trying to reboot client.");
 		HttpPost httpPost = new HttpPost("http://192.168.23.1/goform/RgSetup");
 		httpPost.setConfig(requestConfig);
 
@@ -101,12 +111,12 @@ public class PostMethod {
 		return false;
 	}
 
-	private static void printEntityContent(HttpEntity entity) throws IOException {
+	private void printEntityContent(HttpEntity entity) throws IOException {
 		BufferedReader is = new BufferedReader(
 				new InputStreamReader(entity.getContent()));
 		String s;
 		while ((s = is.readLine()) != null) {
-			System.out.println(s);
+			ps.println(s);
 		}
 	}
 }
